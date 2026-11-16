@@ -24,6 +24,10 @@
 namespace Ship {
 #define TOGGLE_BTN ImGuiKey_F1
 #define TOGGLE_PAD_BTN ImGuiKey_GamepadBack
+// For controllers without a Back/Minus button (e.g. N64 controller):
+// hold Start and press R to open the menu; once open, R alone closes it
+#define TOGGLE_PAD_COMBO_HOLD ImGuiKey_GamepadStart
+#define TOGGLE_PAD_COMBO_BTN ImGuiKey_GamepadR1
 
 Gui::Gui(std::vector<std::shared_ptr<GuiWindow>> guiWindows) : mNeedsConsoleVariableSave(false) {
     mGameOverlay = std::make_shared<GameOverlay>();
@@ -242,13 +246,16 @@ void Gui::DrawMenu() {
 
     ImGui::DockSpace(dockId, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None | ImGuiDockNodeFlags_NoDockingInCentralNode);
 
-    if (ImGui::IsKeyPressed(TOGGLE_BTN, false) || ImGui::IsKeyPressed(ImGuiKey_Escape, false) ||
-        (ImGui::IsKeyPressed(TOGGLE_PAD_BTN, false) &&
-         Ship::Context::GetRawInstance()->GetConsoleVariables()->GetInteger(CVAR_IMGUI_CONTROLLER_NAV, 0))) {
-        if ((ImGui::IsKeyPressed(ImGuiKey_Escape, false) || ImGui::IsKeyPressed(TOGGLE_PAD_BTN, false)) && GetMenu()) {
+    const bool controllerNav =
+        Ship::Context::GetRawInstance()->GetConsoleVariables()->GetInteger(CVAR_IMGUI_CONTROLLER_NAV, 0);
+    const bool padComboToggle = controllerNav && ImGui::IsKeyPressed(TOGGLE_PAD_COMBO_BTN, false) &&
+                                (ImGui::IsKeyDown(TOGGLE_PAD_COMBO_HOLD) || GetMenuOrMenubarVisible());
+    const bool padToggle = (controllerNav && ImGui::IsKeyPressed(TOGGLE_PAD_BTN, false)) || padComboToggle;
+
+    if (ImGui::IsKeyPressed(TOGGLE_BTN, false) || ImGui::IsKeyPressed(ImGuiKey_Escape, false) || padToggle) {
+        if ((ImGui::IsKeyPressed(ImGuiKey_Escape, false) || padToggle) && GetMenu()) {
             GetMenu()->ToggleVisibility();
-        } else if ((ImGui::IsKeyPressed(TOGGLE_BTN, false) || ImGui::IsKeyPressed(TOGGLE_PAD_BTN, false)) &&
-                   GetMenuBar()) {
+        } else if ((ImGui::IsKeyPressed(TOGGLE_BTN, false) || padToggle) && GetMenuBar()) {
             GetMenuBar()->ToggleVisibility();
         }
         Ship::Context::GetRawInstance()->GetWindow()->GetMouseStateManager()->UpdateMouseCapture();
